@@ -9,248 +9,267 @@
 		</style>
 	</head>
 	<body>
-		<script src="js/three.js"></script>
+        <script src="js/three.js"></script>
+        <script src="js/view.js"></script>
+        <div class="tree-js-container"></div>
 		<script>
-            const LEFT_MOUSE_PRESSED = 1;
-            const RIGHT_MOUSE_PRESSED = 2;
-            const WHEEL_PRESSED = 4;
-
-            var renderer = new THREE.WebGLRenderer();
-            renderer.setSize(window.innerWidth, window.innerHeight);            
-            document.body.appendChild(renderer.domElement);
-
-            var scene = new THREE.Scene();
-            scene.position.y -= 20;
-            var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500);
-            camera.position.set(200, 200, 200);
-            camera.lookAt(new THREE.Vector3(0,0,0));
-            console.log(scene.position);
-            var raycaster = new THREE.Raycaster();
-            var mouse = new THREE.Vector2();
-            var INTERSECTED;
-            var user = 0;
-            var currentBarrel = userBarrel(user);
-
-            coordinates(scene);
-
-            var light1 = new THREE.PointLight(0xffffff, 0.5, 0, 2);
-            light1.position.set(500, 500, 500);
-            scene.add(light1);
-
-            var light2 = new THREE.PointLight(0xffffff, 0.5, 0, 2);
-            light2.position.set(-500, 500, 500);
-            scene.add(light2);
-
-            var light2 = new THREE.PointLight(0xffffff, 0.5, 0, 2);
-            light2.position.set(-500, 500, -500);
-            scene.add(light2);
-
-            var light2 = new THREE.PointLight(0xffffff, 0.5, 0, 2);
-            light2.position.set(500, 500, -500);
-            scene.add(light2);
-
-            base(scene);
-            fence(scene);
-            var cam = {
-                angleRadian : Math.PI / 4 - 0.1,
-                angleFi: Math.PI / 4 + 0.1,
-                distance: 300,
-                minDistance: 50,
-                maxDistance: 1000,
-            };
-
-            renderer.render(scene, camera);
+            'use strict';
+            var DIMENSION = 4;
+            let view = new View();
             
-			function animate() {
-				requestAnimationFrame( animate );
-
-				camera.position.x = cam.distance * Math.sin(cam.angleFi) * Math.sin(cam.angleRadian);
-				camera.position.y = cam.distance * Math.cos(cam.angleFi);
-				camera.position.z = cam.distance * Math.sin(cam.angleFi) * Math.cos(cam.angleRadian);
-				camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-
-				raycaster.setFromCamera(mouse, camera);
-				var intersects = raycaster.intersectObjects(scene.children);
-				if (intersects.length > 0) {
-				    if ((INTERSECTED != intersects[0].object)) {
-				        
-				        //if (INTERSECTED && INTERSECTED.material.emissive)
-				        //    INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
-				        INTERSECTED = intersects[0].object;
-				        if (INTERSECTED.userData && INTERSECTED.userData.type == "fence" && INTERSECTED.userData.count < 4
-                            && currentBarrel) {
-				            currentBarrel.position.x = INTERSECTED.userData.x;
-				            currentBarrel.position.z = INTERSECTED.userData.z;
-				            //if(INTERSECTED.material.emissive )
-				            //{
-				            //    INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-				            //    INTERSECTED.material.emissive.setHex(0xff0000);
-				            //}
-				        }
-				    }
-				} else {
-				    if (INTERSECTED && (typeof INTERSECTED.material.emissive != 'undefined'))
-                        INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
-				    INTERSECTED = null;
-				}
-				renderer.render(scene, camera);
-            }
-
-			window.addEventListener('mousemove', onMouseMove, false);
-			window.addEventListener('click', onMouseClick, false);
-			window.addEventListener('wheel', onMouseWheel, false);
-
-			animate();
-
-			function onMouseMove(ev) {
-			    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-			    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-			    if (ev.buttons & LEFT_MOUSE_PRESSED) {
-			        cam.angleRadian = (cam.angleRadian - ev.movementX / window.innerWidth * 8);
-			        cam.angleFi = Math.max(0.0000001, cam.angleFi - ev.movementY / window.innerHeight * 4);
-			        cam.angleFi = Math.min(cam.angleFi, Math.PI - 0.000001);
-			    }
-			    ev.stopPropagation();
-            }
-
-			function onMouseWheel(ev) {
-			    cam.distance = Math.max(cam.minDistance, cam.distance + ev.deltaY / window.innerHeight * 50);
-			    cam.distance = Math.min(cam.distance, cam.maxDistance);
-			    ev.stopPropagation();
-			}
-
-			function onMouseClick(ev) {
-			    if (INTERSECTED && INTERSECTED.userData && INTERSECTED.userData.type == "fence") {
-			        if (INTERSECTED.userData.count < 4) {
-			            currentBarrel.position.y = 20 + 20 * INTERSECTED.userData.count;
-			            INTERSECTED.userData.count++;
-			            user = (user + 1) % 2;
-			            currentBarrel = userBarrel(user);
-			            currentBarrel.position.x = INTERSECTED.userData.x;
-			            currentBarrel.position.z = INTERSECTED.userData.z;
-			        }
-			    }
-			}
-
-            function fence(scene) {
-                var diameter = 3;
-                var height = 85;
-                var centX = 0;
-                var centY = 0;
-                var step = 28;
-
-                var geometry = new THREE.CylinderGeometry(diameter, diameter, height, 100);
-
-                var startX = centX - 1.5 * step;
-                var startY = centY - 1.5 * step;
-
-                for (var i = 0; i < 4; i++) {
-                    for (var j = 0; j < 4; j++) {
-                        var material = new THREE.MeshLambertMaterial({ color: 0xA2B72C });
-                        let cylinder = new THREE.Mesh(geometry, material);
-                        cylinder.position.x = startX + i * step;
-                        cylinder.position.z = startY + j * step;
-                        cylinder.position.y = height / 2 + 10;                        
-                        cylinder.userData = {
-                            type: "fence",
-                            i: i,
-                            j: j,
-                            x: cylinder.position.x,
-                            z: cylinder.position.z,
-                            count: 0
-                        }
-                        scene.add(cylinder);
-
-                        //for (var k = 0; k < 4; k++) {
-                        //    var lathe = lathe( (i+j+k) % 2);
-                        //    lathe.position.set(startX + i * step, 20 + 20 * k, startY + j * step);
-                        //    scene.add(lathe);
-                        //}
+            var field = [];
+            for (let i = 0; i < DIMENSION; i++) {
+                field[i] = [];
+                for (let j = 0; j < DIMENSION; j++) {
+                    field[i][j] = [];
+                    for (let k = 0; k < DIMENSION; k++) {
+                        field[i][j][k] = null;
                     }
                 }
             }
 
-            function base(scene) {
-                var geometry = new THREE.CylinderGeometry(72, 72, 20, 200);
-                var material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
-                var cylinder = new THREE.Mesh(geometry, material);
-                cylinder.position.x = 0;
-                cylinder.position.z = 0;
-                scene.add(cylinder);
+            function clickFenceCallback() {
+
             }
 
-            function userBarrel(userIsWhite) {
-                var barrel = lathe(user);
-                barrel.position.y = 110;
-                scene.add(barrel);
-                return barrel;
-            }
+            function asd(){
+                const LEFT_MOUSE_PRESSED = 1;
+                const RIGHT_MOUSE_PRESSED = 2;
+                const WHEEL_PRESSED = 4;
+                const WIDTH = 600;
+                const HEIGHT = 600;
 
-            function lathe(isWhite) {
-                var material = new THREE.MeshLambertMaterial(isWhite ? { color: 0xffff00 } : { color: 0x6B3A19 });
-                var singleGeometry = new THREE.Geometry();
+                var renderer = new THREE.WebGLRenderer();
+                renderer.setSize(WIDTH, HEIGHT);
+                renderer.domElement.className = 'tree-js-canvas';
+                document.body.appendChild(renderer.domElement);
 
-                var points = [];
-                for (var i = -10; i <= 10; i++) {
-                    points.push(new THREE.Vector2( Math.sin(i * 0.09 - Math.PI/2) * 10, i));
+                var scene = new THREE.Scene();
+                scene.position.y -= 20;
+                var camera = new THREE.PerspectiveCamera(45, WIDTH / HEIGHT, 1, 500);
+                camera.position.set(200, 200, 200);
+                camera.lookAt(new THREE.Vector3(0,0,0));
+                var raycaster = new THREE.Raycaster();
+                var mouse = new THREE.Vector2();
+                var INTERSECTED;
+                var user = 0;
+                var currentBarrel = userBarrel(user);
+
+                coordinates(scene);
+
+                var light1 = new THREE.PointLight(0xffffff, 0.5, 0, 2);
+                light1.position.set(500, 500, 500);
+                scene.add(light1);
+
+                var light2 = new THREE.PointLight(0xffffff, 0.5, 0, 2);
+                light2.position.set(-500, 500, 500);
+                scene.add(light2);
+
+                var light2 = new THREE.PointLight(0xffffff, 0.5, 0, 2);
+                light2.position.set(-500, 500, -500);
+                scene.add(light2);
+
+                var light2 = new THREE.PointLight(0xffffff, 0.5, 0, 2);
+                light2.position.set(500, 500, -500);
+                scene.add(light2);
+
+                base(scene);
+                fence(scene);
+                var cam = {
+                    angleRadian : Math.PI / 4 - 0.1,
+                    angleFi: Math.PI / 4 + 0.1,
+                    distance: 300,
+                    minDistance: 50,
+                    maxDistance: 1000,
+                };
+
+                renderer.render(scene, camera);
+            
+			    function animate() {
+				    requestAnimationFrame( animate );
+
+				    camera.position.x = cam.distance * Math.sin(cam.angleFi) * Math.sin(cam.angleRadian);
+				    camera.position.y = cam.distance * Math.cos(cam.angleFi);
+				    camera.position.z = cam.distance * Math.sin(cam.angleFi) * Math.cos(cam.angleRadian);
+				    camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+
+				    raycaster.setFromCamera(mouse, camera);
+				    var intersects = raycaster.intersectObjects(scene.children);
+				    if (intersects.length > 0) {
+				        if ((INTERSECTED != intersects[0].object)) {
+				        
+				            //if (INTERSECTED && INTERSECTED.material.emissive)
+				            //    INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
+				            INTERSECTED = intersects[0].object;
+				            if (INTERSECTED.userData && INTERSECTED.userData.type == "fence" && INTERSECTED.userData.count < 4
+                                && currentBarrel) {
+				                currentBarrel.position.x = INTERSECTED.userData.x;
+				                currentBarrel.position.z = INTERSECTED.userData.z;
+				                //if(INTERSECTED.material.emissive )
+				                //{
+				                //    INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+				                //    INTERSECTED.material.emissive.setHex(0xff0000);
+				                //}
+				            }
+				        }
+				    } else {
+				        if (INTERSECTED && (typeof INTERSECTED.material.emissive != 'undefined'))
+                            INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
+				        INTERSECTED = null;
+				    }
+				    renderer.render(scene, camera);
                 }
-                var geometry = new THREE.LatheGeometry(points, 60);
-                var mesh = new THREE.Mesh(geometry, material);
-                singleGeometry.merge(mesh.geometry, mesh.matrix);
+			    var canvas = document.querySelector('canvas');
+			    canvas.addEventListener('mousemove', onMouseMove, false);
+			    canvas.addEventListener('click', onMouseClick, false);
+			    canvas.addEventListener('wheel', onMouseWheel, false);
 
-                points = [];
-                points.push(new THREE.Vector2(4, 1));
-                points.push(new THREE.Vector2(4 + 2.216, 1));
-                var geometry1 = new THREE.LatheGeometry(points, 60);
-                var up = new THREE.Mesh(geometry1, material);
-                up.position.y = 11;
-                up.rotateX(Math.PI);
-                up.updateMatrix();
-                singleGeometry.merge(up.geometry, up.matrix);
+			    animate();
 
-                var down = new THREE.Mesh(geometry1, material);
-                down.position.y = -11;
-                down.updateMatrix();
-                singleGeometry.merge(down.geometry, down.matrix);
+			    function onMouseMove(ev) {
+			        mouse.x = (event.clientX / WIDTH) * 2 - 1;
+			        mouse.y = -(event.clientY / HEIGHT) * 2 + 1;
+
+			        if (ev.buttons & LEFT_MOUSE_PRESSED) {
+			            cam.angleRadian = (cam.angleRadian - ev.movementX / WIDTH * 8);
+			            cam.angleFi = Math.max(0.0000001, cam.angleFi - ev.movementY / HEIGHT * 4);
+			            cam.angleFi = Math.min(cam.angleFi, Math.PI - 0.000001);
+			        }
+			        ev.stopPropagation();
+                }
+
+			    function onMouseWheel(ev) {
+			        cam.distance = Math.max(cam.minDistance, cam.distance + ev.deltaY / HEIGHT * 50);
+			        cam.distance = Math.min(cam.distance, cam.maxDistance);
+			        ev.stopPropagation();
+			    }
+
+			    function onMouseClick(ev) {
+			        if (INTERSECTED && INTERSECTED.userData && INTERSECTED.userData.type == "fence") {
+			            if (INTERSECTED.userData.count < 4) {
+			                currentBarrel.position.y = 20 + 20 * INTERSECTED.userData.count;
+			                INTERSECTED.userData.count++;
+			                user = (user + 1) % 2;
+			                currentBarrel = userBarrel(user);
+			                currentBarrel.position.x = INTERSECTED.userData.x;
+			                currentBarrel.position.z = INTERSECTED.userData.z;
+			            }
+			        }
+			    }
+
+                function fence(scene) {
+                    var diameter = 3;
+                    var height = 85;
+                    var centX = 0;
+                    var centY = 0;
+                    var step = 28;
+
+                    var geometry = new THREE.CylinderGeometry(diameter, diameter, height, 100);
+
+                    var startX = centX - 1.5 * step;
+                    var startY = centY - 1.5 * step;
+
+                    for (var i = 0; i < 4; i++) {
+                        for (var j = 0; j < 4; j++) {
+                            var material = new THREE.MeshLambertMaterial({ color: 0xA2B72C });
+                            let cylinder = new THREE.Mesh(geometry, material);
+                            cylinder.position.x = startX + i * step;
+                            cylinder.position.z = startY + j * step;
+                            cylinder.position.y = height / 2 + 10;                        
+                            cylinder.userData = {
+                                type: "fence",
+                                i: i,
+                                j: j,
+                                x: cylinder.position.x,
+                                z: cylinder.position.z,
+                                count: 0
+                            }
+                            scene.add(cylinder);
+                        }
+                    }
+                }
+
+                function base(scene) {
+                    var geometry = new THREE.CylinderGeometry(72, 72, 20, 200);
+                    var material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+                    var cylinder = new THREE.Mesh(geometry, material);
+                    cylinder.position.x = 0;
+                    cylinder.position.z = 0;
+                    scene.add(cylinder);
+                }
+
+                function userBarrel(userIsWhite) {
+                    var barrel = lathe(user);
+                    barrel.position.y = 110;
+                    scene.add(barrel);
+                    return barrel;
+                }
+
+                function lathe(isWhite) {
+                    var material = new THREE.MeshLambertMaterial(isWhite ? { color: 0xffff00 } : { color: 0x6B3A19 });
+                    var singleGeometry = new THREE.Geometry();
+
+                    var points = [];
+                    for (var i = -10; i <= 10; i++) {
+                        points.push(new THREE.Vector2( Math.sin(i * 0.09 - Math.PI/2) * 10, i));
+                    }
+                    var geometry = new THREE.LatheGeometry(points, 60);
+                    var mesh = new THREE.Mesh(geometry, material);
+                    singleGeometry.merge(mesh.geometry, mesh.matrix);
+
+                    points = [];
+                    points.push(new THREE.Vector2(4, 1));
+                    points.push(new THREE.Vector2(4 + 2.216, 1));
+                    var geometry1 = new THREE.LatheGeometry(points, 60);
+                    var up = new THREE.Mesh(geometry1, material);
+                    up.position.y = 11;
+                    up.rotateX(Math.PI);
+                    up.updateMatrix();
+                    singleGeometry.merge(up.geometry, up.matrix);
+
+                    var down = new THREE.Mesh(geometry1, material);
+                    down.position.y = -11;
+                    down.updateMatrix();
+                    singleGeometry.merge(down.geometry, down.matrix);
                       
                 
-                points = [];
-                points.push(new THREE.Vector2(4, 10));
-                points.push(new THREE.Vector2(4, -10));
-                var geometry = new THREE.LatheGeometry(points, 60);
-                var cylMesh = new THREE.Mesh(geometry, material);
-                singleGeometry.merge(cylMesh.geometry, cylMesh.matrix);
+                    points = [];
+                    points.push(new THREE.Vector2(4, 10));
+                    points.push(new THREE.Vector2(4, -10));
+                    var geometry = new THREE.LatheGeometry(points, 60);
+                    var cylMesh = new THREE.Mesh(geometry, material);
+                    singleGeometry.merge(cylMesh.geometry, cylMesh.matrix);
 
-                return new THREE.Mesh(singleGeometry, material);
-            }
+                    return new THREE.Mesh(singleGeometry, material);
+                }
 
-            function coordinates(scene) {
-                var size = 100;
+                function coordinates(scene) {
+                    var size = 100;
 
-                var material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-                var geometry = new THREE.Geometry();
-                geometry.vertices.push(new THREE.Vector3(0, 0, 0));
-                geometry.vertices.push(new THREE.Vector3(size, 0, 0));
-                var line = new THREE.Line(geometry, material);
-                scene.add(line);
+                    var material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+                    var geometry = new THREE.Geometry();
+                    geometry.vertices.push(new THREE.Vector3(0, 0, 0));
+                    geometry.vertices.push(new THREE.Vector3(size, 0, 0));
+                    var line = new THREE.Line(geometry, material);
+                    scene.add(line);
 
-                var material = new THREE.LineBasicMaterial({ color: 0x00ff00 });
-                var geometry = new THREE.Geometry();
-                geometry.vertices.push(new THREE.Vector3(0, 0, 0));
-                geometry.vertices.push(new THREE.Vector3(0, size, 0));
-                var line = new THREE.Line(geometry, material);
-                scene.add(line);
+                    var material = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+                    var geometry = new THREE.Geometry();
+                    geometry.vertices.push(new THREE.Vector3(0, 0, 0));
+                    geometry.vertices.push(new THREE.Vector3(0, size, 0));
+                    var line = new THREE.Line(geometry, material);
+                    scene.add(line);
 
-                var material = new THREE.LineBasicMaterial({ color: 0x0000ff });
-                var geometry = new THREE.Geometry();
-                geometry.vertices.push(new THREE.Vector3(0, 0, 0));
-                geometry.vertices.push(new THREE.Vector3(0, 0, size));
-                var line = new THREE.Line(geometry, material);
-                scene.add(line);
-            }
+                    var material = new THREE.LineBasicMaterial({ color: 0x0000ff });
+                    var geometry = new THREE.Geometry();
+                    geometry.vertices.push(new THREE.Vector3(0, 0, 0));
+                    geometry.vertices.push(new THREE.Vector3(0, 0, size));
+                    var line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                }
 			
+            }
 		</script>
 	</body>
 </html>
